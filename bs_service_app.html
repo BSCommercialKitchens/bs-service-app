@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>B+S Service</title>
+<style>
+:root {
+  --navy: #1a3a5c;
+  --navy-dark: #0f2440;
+  --orange: #f97316;
+  --blue-tint: #eef4fb;
+  --mid: #e2e8f0;
+  --muted: #94a3b8;
+  --text: #1e293b;
+  --text-soft: #475569;
+  --green: #16a34a;
+  --green-bg: #f0fdf4;
+  --red: #dc2626;
+  --red-bg: #fef2f2;
+  --amber: #d97706;
+  --amber-bg: #fffbeb;
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07), 0 2px 12px rgba(0,0,0,0.05);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; color: var(--text); }
+
+/* HEADER */
+.hdr { background: var(--navy); padding: 14px 18px 10px; position: sticky; top: 0; z-index: 200; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+.hdr-top { display: flex; align-items: center; justify-content: space-between; }
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-sq { width: 34px; height: 34px; border-radius: 8px; background: var(--orange); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; color: white; flex-shrink: 0; }
+.logo-name { font-size: 15px; font-weight: 800; color: white; letter-spacing: -0.3px; line-height: 1.1; }
+.logo-sub  { font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 0.6px; text-transform: uppercase; }
+.hdr-date  { font-size: 11px; color: rgba(255,255,255,0.5); }
+
+/* TABS */
+.tabs { display: flex; background: white; border-bottom: 1.5px solid var(--mid); position: sticky; top: 62px; z-index: 190; }
+.tab { flex: 1; padding: 11px 4px 9px; border: none; background: none; font-size: 11px; font-weight: 600; color: var(--muted); border-bottom: 2.5px solid transparent; cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.tab-icon { font-size: 17px; }
+.tab.active { color: var(--navy); border-bottom-color: var(--orange); }
+
+/* SCREENS */
+.screen { display: none; padding: 14px 14px 100px; }
+.screen.active { display: block; }
+
+/* CARDS */
+.card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden; }
+.card-head { display: flex; align-items: center; gap: 10px; padding: 13px 15px 11px; border-bottom: 1px solid #f1f5f9; }
+.card-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--blue-tint); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.card-title { font-size: 13px; font-weight: 700; color: var(--navy); }
+.card-sub   { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.card-body  { padding: 13px 15px; }
+
+/* FIELDS */
+.field { margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+.lbl { display: block; font-size: 11px; font-weight: 700; color: var(--text-soft); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+.inp { width: 100%; padding: 11px 13px; border: 1.5px solid var(--mid); border-radius: var(--radius-sm); font-size: 15px; color: var(--text); background: white; -webkit-appearance: none; appearance: none; transition: border-color 0.15s; font-family: inherit; }
+.inp:focus { outline: none; border-color: var(--navy); }
+select.inp { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2394a3b8' d='M5 7L0 2h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; padding-right: 34px; }
+textarea.inp { resize: none; line-height: 1.5; min-height: 90px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* CHECKLIST */
+.cl-item { display: flex; align-items: center; gap: 10px; padding: 12px 15px; border-bottom: 1px solid #f8fafc; }
+.cl-item:last-child { border-bottom: none; }
+.cl-label { flex: 1; font-size: 13px; line-height: 1.35; color: var(--text); }
+.cl-label.crit { font-weight: 700; color: var(--navy); }
+.cl-btns { display: flex; gap: 5px; flex-shrink: 0; }
+.cl-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--mid); background: white; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s; flex-shrink: 0; font-family: inherit; }
+.cl-btn.pass { border-color: var(--green); background: var(--green); color: white; }
+.cl-btn.fail { border-color: var(--red);   background: var(--red);   color: white; }
+.cl-btn.na   { border-color: var(--muted); background: var(--muted); color: white; font-size: 9px; font-weight: 800; }
+
+/* PROGRESS */
+.prog-wrap { margin-bottom: 14px; }
+.prog-row  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+.prog-lbl  { font-size: 11px; font-weight: 700; color: var(--text-soft); }
+.prog-pct  { font-size: 12px; font-weight: 800; color: var(--navy); }
+.prog-bar  { height: 5px; background: var(--mid); border-radius: 99px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--navy), var(--orange)); transition: width 0.3s; }
+
+/* STATS */
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.stat { background: white; border-radius: var(--radius-sm); padding: 10px 6px; text-align: center; border: 1px solid var(--mid); }
+.stat-n { font-size: 22px; font-weight: 900; line-height: 1; }
+.stat-n.g { color: var(--green); }
+.stat-n.r { color: var(--red); }
+.stat-n.m { color: var(--muted); }
+.stat-l { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-top: 3px; }
+
+/* ALERTS */
+.alert { border-radius: var(--radius-sm); padding: 11px 13px; margin-bottom: 12px; font-size: 12px; line-height: 1.55; }
+.alert-info  { background: var(--blue-tint); border: 1px solid #bfdbfe; color: var(--navy); }
+.alert-warn  { background: var(--amber-bg);  border: 1px solid #fcd34d; color: var(--amber); }
+.alert-good  { background: var(--green-bg);  border: 1px solid #86efac; color: var(--green); }
+
+/* BUTTONS */
+.btn { width: 100%; padding: 15px; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.12s; margin-top: 6px; font-family: inherit; }
+.btn-navy   { background: var(--navy); color: white; }
+.btn-navy:active { background: var(--navy-dark); transform: scale(0.98); }
+.btn-orange { background: var(--orange); color: white; box-shadow: 0 4px 14px rgba(249,115,22,0.35); }
+.btn-orange:active { transform: scale(0.98); }
+.btn-ghost  { background: white; color: var(--navy); border: 1.5px solid var(--navy); }
+
+/* SEND */
+.add-email-row { display: flex; gap: 8px; }
+.add-email-row .inp { flex: 1; font-size: 14px; padding: 10px 12px; }
+.add-email-row .add-btn { padding: 10px 16px; background: var(--navy); color: white; border: none; border-radius: var(--radius-sm); font-size: 18px; cursor: pointer; flex-shrink: 0; }
+.recipient-row { display: flex; align-items: center; gap: 8px; background: white; border: 1.5px solid var(--mid); border-radius: var(--radius-sm); padding: 4px 4px 4px 13px; margin-bottom: 8px; }
+.recipient-row input { flex: 1; border: none; outline: none; font-size: 14px; color: var(--text-soft); font-family: inherit; background: transparent; }
+.recipient-row .rm { width: 30px; height: 30px; border-radius: 50%; border: none; background: var(--red-bg); color: var(--red); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+/* ISSUES */
+.flag-item { display: flex; align-items: flex-start; gap: 8px; background: var(--red-bg); border-left: 3px solid var(--red); border-radius: 0 8px 8px 0; padding: 9px 10px; margin-bottom: 6px; }
+.flag-txt { flex: 1; font-size: 13px; font-weight: 600; color: #991b1b; }
+.flag-cat { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* PHOTOS */
+.photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.photo-slot { aspect-ratio: 1; border: 2px dashed var(--mid); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: var(--blue-tint); gap: 4px; position: relative; overflow: hidden; }
+.photo-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.photo-slot-overlay { position: absolute; bottom: 4px; left: 4px; right: 4px; background: rgba(0,0,0,0.55); border-radius: 5px; color: white; font-size: 9px; text-align: center; padding: 2px; }
+
+/* HISTORY */
+.hist-item { display: flex; align-items: center; gap: 12px; padding: 13px 15px; border-bottom: 1px solid #f1f5f9; }
+.hist-item:last-child { border-bottom: none; }
+.hist-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.hist-dot.ok  { background: var(--green); }
+.hist-dot.bad { background: var(--red); }
+.hist-biz  { font-size: 14px; font-weight: 700; color: var(--text); }
+.hist-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 99px; font-size: 10px; font-weight: 700; margin-top: 4px; margin-right: 4px; }
+.b-pass { background: var(--green-bg); color: #15803d; }
+.b-fail { background: var(--red-bg); color: #b91c1c; }
+.b-warn { background: var(--amber-bg); color: var(--amber); }
+
+/* EMPTY */
+.empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+.empty-icon { font-size: 44px; margin-bottom: 10px; }
+.empty-txt  { font-size: 14px; font-weight: 600; }
+.empty-sub  { font-size: 12px; margin-top: 4px; }
+
+/* PREVIEW OVERLAY */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: flex-start; justify-content: center; z-index: 999; padding-top: 20px; }
+.overlay-card { background: white; border-radius: 16px; width: calc(100% - 28px); max-width: 540px; max-height: 85vh; overflow-y: auto; padding: 20px; }
+.overlay-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.overlay-title { font-size: 15px; font-weight: 800; color: var(--navy); }
+.overlay-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
+
+.sect-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); padding: 4px 0 8px; }
+
+/* PASSWORD SCREEN */
+.pw-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--navy);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 32px 24px;
+}
+.pw-logo-wrap { text-align: center; margin-bottom: 40px; }
+.pw-logo-sq {
+  width: 64px; height: 64px; border-radius: 14px;
+  background: var(--orange); margin: 0 auto 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 22px; color: white;
+}
+.pw-title { font-size: 22px; font-weight: 800; color: white; letter-spacing: -0.3px; }
+.pw-sub   { font-size: 13px; color: rgba(255,255,255,0.45); margin-top: 4px; }
+.pw-card  {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px; padding: 24px; width: 100%; max-width: 340px;
+}
+.pw-label { font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: rgba(255,255,255,0.5); margin-bottom: 8px; display: block; }
+.pw-input {
+  width: 100%; padding: 14px 16px; border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08); color: white;
+  font-size: 18px; letter-spacing: 3px; font-family: inherit;
+  text-align: center; margin-bottom: 14px;
+  -webkit-appearance: none; appearance: none;
+}
+.pw-input:focus { outline: none; border-color: var(--orange); }
+.pw-input::placeholder { letter-spacing: 1px; font-size: 14px; color: rgba(255,255,255,0.3); }
+.pw-btn {
+  width: 100%; padding: 15px; border: none; border-radius: 10px;
+  background: var(--orange); color: white; font-size: 16px;
+  font-weight: 700; cursor: pointer; font-family: inherit;
+  transition: all 0.12s;
+}
+.pw-btn:active { transform: scale(0.97); }
+.pw-error {
+  text-align: center; color: #fca5a5; font-size: 13px;
+  font-weight: 600; margin-top: 10px; min-height: 20px;
+}
+</style>
+</head>
+<body>
+
+<!-- PASSWORD SCREEN -->
+<div class="pw-screen" id="pw-screen">
+  <div class="pw-logo-wrap">
+    <div class="pw-logo-sq">B+S</div>
+    <div class="pw-title">Service App</div>
+    <div class="pw-sub">B+S Commercial Kitchens</div>
+  </div>
+  <div class="pw-card">
+    <label class="pw-label">Enter Password</label>
+    <input class="pw-input" id="pw-input" type="password"
+      placeholder="Enter password"
+      onkeydown="if(event.key==='Enter') checkPassword()">
+    <button class="pw-btn" onclick="checkPassword()">Unlock →</button>
+    <div class="pw-error" id="pw-error"></div>
+  </div>
+</div>
+
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="logo">
+      <div class="logo-sq">B+S</div>
+      <div>
+        <div class="logo-name">Service App</div>
+        <div class="logo-sub">Commercial Kitchens</div>
+      </div>
+    </div>
+    <div class="hdr-date" id="hdr-date"></div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" id="tab-job"       onclick="go('job')">      <span class="tab-icon">📋</span>Job</button>
+  <button class="tab"        id="tab-checklist" onclick="go('checklist')"> <span class="tab-icon">✅</span>Checklist</button>
+  <button class="tab"        id="tab-issues"    onclick="go('issues')">    <span class="tab-icon">⚠️</span>Issues</button>
+  <button class="tab"        id="tab-send"      onclick="go('send')">      <span class="tab-icon">📧</span>Send</button>
+  <button class="tab"        id="tab-history"   onclick="go('history')">   <span class="tab-icon">📁</span>History</button>
+</div>
+
+<!-- JOB TAB -->
+<div class="screen active" id="screen-job">
+  <div class="card">
+    <div class="card-head"><div class="card-icon">🏢</div>
+      <div><div class="card-title">Site Details</div><div class="card-sub">Where and who</div></div>
+    </div>
+    <div class="card-body">
+      <div class="field"><label class="lbl">Business Name *</label>
+        <input class="inp" id="biz" type="text" placeholder="e.g. The Royal Hotel" autocomplete="organization"></div>
+      <div class="row2">
+        <div class="field"><label class="lbl">Contact Person</label>
+          <input class="inp" id="contact" type="text" placeholder="Name"></div>
+        <div class="field"><label class="lbl">Phone</label>
+          <input class="inp" id="phone" type="tel" placeholder="04xx xxx xxx"></div>
+      </div>
+      <div class="field"><label class="lbl">Address</label>
+        <input class="inp" id="address" type="text" placeholder="Street, Suburb, State"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-icon">📅</div>
+      <div><div class="card-title">Service Info</div></div>
+    </div>
+    <div class="card-body">
+      <div class="row2">
+        <div class="field"><label class="lbl">Date *</label>
+          <input class="inp" id="sdate" type="date"></div>
+        <div class="field"><label class="lbl">Technician *</label>
+          <input class="inp" id="tech" type="text" placeholder="Your name"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-icon">⚙️</div>
+      <div><div class="card-title">Equipment</div></div>
+    </div>
+    <div class="card-body">
+      <div class="row2">
+        <div class="field"><label class="lbl">Range *</label>
+          <select class="inp" id="erange" onchange="onRangeChange()">
+            <option value="">Select...</option>
+            <option>B+S Black</option>
+            <option>K+</option>
+            <option>Rapid</option>
+          </select></div>
+        <div class="field"><label class="lbl">Type *</label>
+          <select class="inp" id="etype" onchange="onTypeChange()">
+            <option value="">Select...</option>
+          </select></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="lbl">Model Code</label>
+          <input class="inp" id="model" type="text" placeholder="e.g. GRP-6"></div>
+        <div class="field"><label class="lbl">Serial / Mfg Date</label>
+          <input class="inp" id="serial" type="text" placeholder="Serial or date"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="lbl">Gas Type</label>
+          <select class="inp" id="gas">
+            <option value="ng">Natural Gas (NG)</option>
+            <option value="lpg">LPG</option>
+          </select></div>
+        <div class="field"><label class="lbl">Warranty</label>
+          <select class="inp" id="warranty">
+            <option value="">Unknown</option>
+            <option>In Warranty</option>
+            <option>Out of Warranty</option>
+          </select></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-icon">📊</div>
+      <div><div class="card-title">Gas Pressure</div><div class="card-sub">Record before starting</div></div>
+    </div>
+    <div class="card-body">
+      <div class="row2">
+        <div class="field"><label class="lbl">Static (kPa)</label>
+          <input class="inp" id="p-static" type="number" step="0.01" placeholder="e.g. 2.75" inputmode="decimal"></div>
+        <div class="field"><label class="lbl">Dynamic (kPa)</label>
+          <input class="inp" id="p-dynamic" type="number" step="0.01" placeholder="e.g. 2.50" inputmode="decimal"></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-navy" onclick="startChecklist()">Start Checklist →</button>
+</div>
+
+<!-- CHECKLIST TAB -->
+<div class="screen" id="screen-checklist">
+  <div class="prog-wrap">
+    <div class="prog-row">
+      <span class="prog-lbl" id="cl-title">Checklist</span>
+      <span class="prog-pct" id="cl-pct">0%</span>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" id="cl-bar" style="width:0%"></div></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-n g" id="s-pass">0</div><div class="stat-l">Pass</div></div>
+    <div class="stat"><div class="stat-n r" id="s-fail">0</div><div class="stat-l">Fail</div></div>
+    <div class="stat"><div class="stat-n m" id="s-na">0</div><div class="stat-l">N/A</div></div>
+  </div>
+  <div class="alert alert-info" style="font-size:11px;">✓ Pass &nbsp;·&nbsp; ✗ Fail &nbsp;·&nbsp; N/A = not applicable</div>
+  <div id="cl-items">
+    <div class="empty"><div class="empty-icon">📋</div>
+      <div class="empty-txt">No checklist loaded</div>
+      <div class="empty-sub">Complete the Job tab first</div></div>
+  </div>
+  <div class="card" style="margin-top:12px;">
+    <div class="card-head"><div class="card-icon">💬</div>
+      <div><div class="card-title">Comments & Notes</div></div>
+    </div>
+    <div class="card-body">
+      <textarea class="inp" id="comments" placeholder="Observations, recommendations, follow-up required…"></textarea>
+    </div>
+  </div>
+  <button class="btn btn-navy" onclick="go('issues')">Next: Issues & Photos →</button>
+</div>
+
+<!-- ISSUES TAB -->
+<div class="screen" id="screen-issues">
+  <div class="card">
+    <div class="card-head"><div class="card-icon">🚨</div>
+      <div><div class="card-title">Non-Warranty Issues</div>
+        <div class="card-sub">Highlighted in the report</div></div>
+    </div>
+    <div class="card-body">
+      <div id="flags-list"></div>
+      <div class="add-email-row" style="margin-bottom:8px;">
+        <input class="inp" id="flag-in" type="text" placeholder="Describe the issue…">
+        <button class="add-btn" onclick="addFlag()">+</button>
+      </div>
+      <select class="inp" id="flag-cat" style="font-size:13px; padding:9px 12px;">
+        <option value="">Category (optional)…</option>
+        <option>Incorrect Gas Pressure</option>
+        <option>Kinked Hose</option>
+        <option>Physical Damage</option>
+        <option>Improper Installation</option>
+        <option>Blocked Burner / Orifice</option>
+        <option>Corrosion / Lime Scale</option>
+        <option>Other</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-icon">📷</div>
+      <div><div class="card-title">Photos</div>
+        <div class="card-sub">Attach to the email after sending</div></div>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-warn" style="font-size:11px; margin-bottom:12px;">
+        📎 Photos are attached manually in your email app after tapping Send.
+      </div>
+      <div class="photo-grid" id="photo-grid"></div>
+    </div>
+  </div>
+
+  <button class="btn btn-navy" onclick="go('send')">Next: Send Report →</button>
+</div>
+
+<!-- SEND TAB -->
+<div class="screen" id="screen-send">
+  <div class="card">
+    <div class="card-head"><div class="card-icon">📧</div>
+      <div><div class="card-title">Send To</div>
+        <div class="card-sub">Add as many recipients as you need</div></div>
+    </div>
+    <div class="card-body">
+      <div class="sect-lbl">Recipients</div>
+      <div id="recipients-list"></div>
+      <div class="add-email-row">
+        <input class="inp" id="email-in" type="email" placeholder="name@example.com" inputmode="email">
+        <button class="add-btn" onclick="addRecipient()">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-icon">📝</div>
+      <div><div class="card-title">Message (optional)</div></div>
+    </div>
+    <div class="card-body">
+      <textarea class="inp" id="send-note" placeholder="Add a personal note to the email…" style="min-height:70px;"></textarea>
+    </div>
+  </div>
+
+  <div class="alert alert-warn" style="font-size:11px;">
+    📎 After your email app opens, attach your photos before hitting send.
+  </div>
+
+  <button class="btn btn-orange" onclick="sendReport()">📧 Open Email & Send</button>
+  <button class="btn btn-ghost"  onclick="previewReport()">Preview Report</button>
+</div>
+
+<!-- HISTORY TAB -->
+<div class="screen" id="screen-history">
+  <div id="hist-list">
+    <div class="empty"><div class="empty-icon">📁</div>
+      <div class="empty-txt">No jobs yet</div>
+      <div class="empty-sub">Sent jobs appear here</div></div>
+  </div>
+</div>
+
+<!-- PREVIEW OVERLAY -->
+<div class="overlay" id="preview-overlay">
+  <div class="overlay-card">
+    <div class="overlay-head">
+      <div class="overlay-title">Report Preview</div>
+      <button class="overlay-close" onclick="document.getElementById('preview-overlay').style.display='none'">✕</button>
+    </div>
+    <div id="preview-body" style="font-size:12px; line-height:1.7; color:var(--text); white-space:pre-wrap; font-family:monospace;"></div>
+  </div>
+</div>
+
+<script>
+// ── DATE ──────────────────────────────────────────────────────────────────
+document.getElementById('hdr-date').textContent =
+  new Date().toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+document.getElementById('sdate').value = new Date().toISOString().split('T')[0];
+
+// ── DATA ──────────────────────────────────────────────────────────────────
+var TYPES = {
+  'B+S Black': ['Grill Plate','Oven Range','Boiling Top','Char Broiler','Turbo Fryer',
+    'Noodle / Pasta Cooker','Waterless Wok Table','Waterless Stock Pot','Waterless Steamer','Target Top'],
+  'K+': ['Grill Plate','Oven Range','Boiling Top','Char Broiler','Turbo Fryer',
+    'Noodle / Pasta Cooker','Waterless Wok Table','Waterless Stock Pot','Waterless Steamer','Deck Steamer','Duck Oven'],
+  'Rapid': ['Gas Fryer','Electric Fryer']
+};
+
+var CHECKLISTS = {
+  'Grill Plate': [
+    {t:'★ Burner flame & performance',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube condition',c:true},
+    {t:'Pilot gas cocks & knobs',c:false},
+    {t:'Thermocouple',c:false},
+    {t:'Piezo / spark ignition',c:false},
+    {t:'Pilot assembly & injector',c:false},
+    {t:'Electrode & lead',c:false},
+    {t:'Pilot flexi tube',c:false},
+    {t:'Mongolian injector nozzle',c:false},
+    {t:'Grill plate surface condition',c:false},
+    {t:'Drip tray & grease management',c:false}
+  ],
+  'Oven Range': [
+    {t:'★ Boiling top burners – flame & performance',c:true},
+    {t:'★ Oven burner – flame & performance',c:true},
+    {t:'★ Gas flexi tubes',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'Oven gas valve',c:false},
+    {t:'Oven pilot assembly',c:false},
+    {t:'Thermocouples',c:false},
+    {t:'Fan & switch (if installed)',c:false},
+    {t:'Injector nozzle',c:false},
+    {t:'Pilot gas cocks & knobs',c:false},
+    {t:'Oven door – hinge & seal',c:false},
+    {t:'No foil near burner / oven base',c:false}
+  ],
+  'Boiling Top': [
+    {t:'★ All burners – flame & performance',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tubes',c:true},
+    {t:'Pilot gas cocks & knobs',c:false},
+    {t:'Injector nozzles',c:false},
+    {t:'Thermocouples',c:false},
+    {t:'Piezo ignition',c:false},
+    {t:'Pilot assemblies',c:false},
+    {t:'Flame failure device',c:false},
+    {t:'Spillage bowl condition (K+ range)',c:false}
+  ],
+  'Char Broiler': [
+    {t:'★ Burner flame & performance',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube',c:true},
+    {t:'Pilot gas cocks & knobs',c:false},
+    {t:'Injector nozzles',c:false},
+    {t:'Thermocouple',c:false},
+    {t:'Piezo ignition',c:false},
+    {t:'Electrode & lead',c:false},
+    {t:'Grill rock / ceramic condition',c:false},
+    {t:'Grease drip tray',c:false}
+  ],
+  'Turbo Fryer': [
+    {t:'★ Burner operation & flame',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube',c:true},
+    {t:'Temperature accuracy',c:false},
+    {t:'Pilot gas cocks',c:false},
+    {t:'Thermocouple',c:false},
+    {t:'Piezo ignition',c:false},
+    {t:'Fryer basket condition',c:false},
+    {t:'Oil drain valve',c:false},
+    {t:'Flue baffle condition',c:false}
+  ],
+  'Noodle / Pasta Cooker': [
+    {t:'★ Burner operation & flame',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube',c:true},
+    {t:'Pilot gas cocks',c:false},
+    {t:'Thermocouple',c:false},
+    {t:'Water inlet & overflow',c:false},
+    {t:'Basket condition',c:false},
+    {t:'Soup warmer function (if fitted)',c:false},
+    {t:'Cheung fun insert (if fitted)',c:false}
+  ],
+  'Gas Fryer': [
+    {t:'★ Burner flame & performance',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube',c:true},
+    {t:'Thermostat calibration',c:false},
+    {t:'High-limit safety cut-out',c:false},
+    {t:'Pilot assembly & ignition',c:false},
+    {t:'Oil drain valve',c:false},
+    {t:'Fryer basket condition',c:false},
+    {t:'Control panel function',c:false}
+  ],
+  'Electric Fryer': [
+    {t:'★ Element condition & resistance',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'★ High-limit safety cut-out',c:true},
+    {t:'Thermostat calibration',c:false},
+    {t:'Control panel function',c:false},
+    {t:'Oil drain valve',c:false},
+    {t:'Fryer basket condition',c:false},
+    {t:'Timer / display (if fitted)',c:false}
+  ],
+  'Waterless Wok Table': [
+    {t:'★ Wok burner flame & performance',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube',c:true},
+    {t:'★ Water flow & overflow system',c:true},
+    {t:'Knee valve (if fitted)',c:false},
+    {t:'Pilot assembly & ignition',c:false},
+    {t:'Thermocouple',c:false},
+    {t:'Wok ring & holder',c:false},
+    {t:'Simmer ring / sauce wok (if fitted)',c:false},
+    {t:'Drain & waste pipes',c:false}
+  ],
+  'Waterless Stock Pot': [
+    {t:'★ Burner flame & performance',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube',c:true},
+    {t:'★ Water flow & overflow system',c:true},
+    {t:'Burner type – Chimney or Duckbill',c:false},
+    {t:'Pilot assembly & ignition',c:false},
+    {t:'Thermocouple',c:false},
+    {t:'Drain & waste pipes',c:false}
+  ],
+  'Waterless Steamer': [
+    {t:'★ Burner flame & performance',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube',c:true},
+    {t:'★ Water flow & overflow system',c:true},
+    {t:'Heat exchange function',c:false},
+    {t:'Steamer lid & seal',c:false},
+    {t:'Tray & body condition',c:false},
+    {t:'Cheung fun insert (if fitted)',c:false}
+  ],
+  'Deck Steamer': [
+    {t:'★ Burner flame & performance',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube',c:true},
+    {t:'Steam generation',c:false},
+    {t:'Door seals & latches',c:false},
+    {t:'Filter condition',c:false},
+    {t:'Water inlet & drain',c:false},
+    {t:'Temperature accuracy',c:false}
+  ],
+  'Duck Oven': [
+    {t:'★ Burner flame & performance',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube',c:true},
+    {t:'Gas valve & controls',c:false},
+    {t:'Pilot assembly',c:false},
+    {t:'Thermocouple',c:false},
+    {t:'Door seal & hinge',c:false},
+    {t:'Temperature accuracy',c:false},
+    {t:'Hook & hanging mechanism',c:false}
+  ],
+  'Target Top': [
+    {t:'★ Target burner flame & performance',c:true},
+    {t:'★ Regulator – Static & Dynamic gas pressure',c:true},
+    {t:'★ Gas flexi tube',c:true},
+    {t:'Pilot assembly & ignition',c:false},
+    {t:'Thermocouple',c:false},
+    {t:'Boiling top burners (if combination)',c:false},
+    {t:'Oven function (if combination)',c:false}
+  ]
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+var checklist = [], states = {}, flags = [], recipients = [], jobs = [];
+var PHOTO_LABELS = ['Before service','After service','Non-warranty issue','Gas connections','Other'];
+var photos = [null,null,null,null,null];
+
+// ── NAV ───────────────────────────────────────────────────────────────────
+function go(tab) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('screen-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ── EQUIPMENT ─────────────────────────────────────────────────────────────
+function onRangeChange() {
+  var r = document.getElementById('erange').value;
+  var sel = document.getElementById('etype');
+  sel.innerHTML = '<option value="">Select...</option>';
+  (TYPES[r]||[]).forEach(function(t){
+    var o = document.createElement('option'); o.value = o.textContent = t; sel.appendChild(o);
+  });
+  checklist = []; states = {};
+}
+
+function onTypeChange() {
+  var t = document.getElementById('etype').value;
+  checklist = CHECKLISTS[t] || [];
+  states = {};
+  checklist.forEach(function(_,i){ states[i] = null; });
+}
+
+// ── CHECKLIST ─────────────────────────────────────────────────────────────
+function startChecklist() {
+  if (!document.getElementById('biz').value.trim()) { alert('Please enter the business name.'); return; }
+  if (!document.getElementById('erange').value)     { alert('Please select the equipment range.'); return; }
+  if (!document.getElementById('etype').value)      { alert('Please select the equipment type.'); return; }
+  if (!checklist.length) onTypeChange();
+  renderChecklist();
+  go('checklist');
+}
+
+function renderChecklist() {
+  var type  = document.getElementById('etype').value;
+  var range = document.getElementById('erange').value;
+  document.getElementById('cl-title').textContent = range + ' – ' + type;
+  var wrap = document.getElementById('cl-items');
+  if (!checklist.length) {
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">Complete Job tab first</div></div>';
+    updateProgress(); return;
+  }
+  var html = '<div class="card"><div>';
+  checklist.forEach(function(item, i) {
+    var s = states[i];
+    html += '<div class="cl-item">' +
+      '<div class="cl-label' + (item.c?' crit':'') + '">' + item.t + '</div>' +
+      '<div class="cl-btns">' +
+      '<button class="cl-btn' + (s==='pass'?' pass':'') + '" onclick="setState('+i+',\'pass\')">✓</button>' +
+      '<button class="cl-btn' + (s==='fail'?' fail':'') + '" onclick="setState('+i+',\'fail\')">✗</button>' +
+      '<button class="cl-btn' + (s==='na'?' na':'')     + '" onclick="setState('+i+',\'na\')">N/A</button>' +
+      '</div></div>';
+  });
+  html += '</div></div>';
+  wrap.innerHTML = html;
+  updateProgress();
+}
+
+function setState(i, v) {
+  states[i] = (states[i] === v) ? null : v;
+  renderChecklist();
+}
+
+function updateProgress() {
+  var total = checklist.length; if (!total) return;
+  var pass=0, fail=0, na=0;
+  Object.values(states).forEach(function(v){ if(v==='pass')pass++; else if(v==='fail')fail++; else if(v==='na')na++; });
+  var done = pass+fail+na;
+  var pct  = Math.round(done/total*100);
+  document.getElementById('cl-bar').style.width  = pct+'%';
+  document.getElementById('cl-pct').textContent  = pct+'%';
+  document.getElementById('s-pass').textContent  = pass;
+  document.getElementById('s-fail').textContent  = fail;
+  document.getElementById('s-na').textContent    = na;
+}
+
+// ── FLAGS ─────────────────────────────────────────────────────────────────
+function addFlag() {
+  var inp = document.getElementById('flag-in');
+  var cat = document.getElementById('flag-cat');
+  var v   = inp.value.trim();
+  if (!v) return;
+  flags.push({text: v, cat: cat.value});
+  inp.value = ''; cat.value = '';
+  renderFlags();
+}
+
+function removeFlag(i) { flags.splice(i,1); renderFlags(); }
+
+function renderFlags() {
+  var c = document.getElementById('flags-list');
+  if (!flags.length) { c.innerHTML = ''; return; }
+  c.innerHTML = flags.map(function(f,i){
+    return '<div class="flag-item">' +
+      '<div style="flex:1"><div class="flag-txt">' + f.text + '</div>' +
+      (f.cat ? '<div class="flag-cat">' + f.cat + '</div>' : '') + '</div>' +
+      '<button onclick="removeFlag('+i+')" style="background:none;border:none;font-size:18px;color:var(--red);cursor:pointer;">✕</button>' +
+      '</div>';
+  }).join('');
+}
+
+// ── PHOTOS ────────────────────────────────────────────────────────────────
+function renderPhotoGrid() {
+  var grid = document.getElementById('photo-grid');
+  grid.innerHTML = PHOTO_LABELS.map(function(label, i){
+    return '<label class="photo-slot" id="pslot-'+i+'">' +
+      (photos[i]
+        ? '<img src="'+photos[i]+'">' + '<div class="photo-slot-overlay">✓ ' + label + '</div>'
+        : '<span style="font-size:22px;">📷</span><span style="font-size:10px;color:var(--muted);text-align:center;padding:0 6px;">'+label+'</span>'
+      ) +
+      '<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handlePhoto(event,'+i+')">' +
+      '</label>';
+  }).join('');
+}
+renderPhotoGrid();
+
+function handlePhoto(e, i) {
+  var file = e.target.files[0]; if (!file) return;
+  var r = new FileReader();
+  r.onload = function(ev){ photos[i] = ev.target.result; renderPhotoGrid(); };
+  r.readAsDataURL(file);
+}
+
+// ── RECIPIENTS ────────────────────────────────────────────────────────────
+function addRecipient() {
+  var inp = document.getElementById('email-in');
+  var v   = inp.value.trim();
+  if (!v || !v.includes('@')) { alert('Please enter a valid email address.'); return; }
+  if (recipients.indexOf(v) === -1) recipients.push(v);
+  inp.value = '';
+  renderRecipients();
+}
+
+function removeRecipient(i) { recipients.splice(i,1); renderRecipients(); }
+
+function renderRecipients() {
+  var c = document.getElementById('recipients-list');
+  if (!recipients.length) { c.innerHTML = ''; return; }
+  c.innerHTML = recipients.map(function(r,i){
+    return '<div class="recipient-row">' +
+      '<input type="email" value="'+r+'" readonly>' +
+      '<button class="rm" onclick="removeRecipient('+i+')">✕</button>' +
+      '</div>';
+  }).join('');
+}
+
+// ── BUILD REPORT ──────────────────────────────────────────────────────────
+function buildReport() {
+  function v(id){ return document.getElementById(id).value || '—'; }
+  var d = v('sdate') !== '—'
+    ? new Date(v('sdate')).toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'})
+    : '—';
+  var gas = v('gas') === 'ng' ? 'Natural Gas (NG)' : 'LPG';
+  var pass=0, fail=0, na=0;
+  Object.values(states).forEach(function(s){ if(s==='pass')pass++; else if(s==='fail')fail++; else if(s==='na')na++; });
+
+  var lines = [];
+  lines.push('B+S COMMERCIAL KITCHENS — SERVICE REPORT');
+  lines.push('═'.repeat(46));
+  lines.push('');
+  lines.push('JOB DETAILS');
+  lines.push('─'.repeat(30));
+  lines.push('Business:        ' + v('biz'));
+  lines.push('Address:         ' + v('address'));
+  lines.push('Contact:         ' + v('contact') + '   ' + v('phone'));
+  lines.push('Service Date:    ' + d);
+  lines.push('Technician:      ' + v('tech'));
+  lines.push('');
+  lines.push('EQUIPMENT');
+  lines.push('─'.repeat(30));
+  lines.push('Range:           ' + v('erange'));
+  lines.push('Type:            ' + v('etype'));
+  lines.push('Model:           ' + v('model'));
+  lines.push('Serial / Mfg:    ' + v('serial'));
+  lines.push('Gas Type:        ' + gas);
+  lines.push('Warranty:        ' + (v('warranty') === '—' ? 'Unknown' : v('warranty')));
+  lines.push('Static Pressure: ' + v('p-static') + ' kPa');
+  lines.push('Dynamic Press.:  ' + v('p-dynamic') + ' kPa');
+  lines.push('');
+  lines.push('CHECKLIST  ✓ ' + pass + ' Pass  |  ✗ ' + fail + ' Fail  |  ' + na + ' N/A');
+  lines.push('─'.repeat(46));
+  checklist.forEach(function(item,i){
+    var s = states[i];
+    var lbl = s==='pass' ? '✓ Pass  ' : s==='fail' ? '✗ FAIL  ' : s==='na' ? 'N/A     ' : '—       ';
+    lines.push(lbl + ' ' + item.t);
+  });
+
+  if (flags.length) {
+    lines.push('');
+    lines.push('NON-WARRANTY ISSUES');
+    lines.push('─'.repeat(30));
+    flags.forEach(function(f){ lines.push('⚠  ' + f.text + (f.cat ? ' (' + f.cat + ')' : '')); });
+  }
+
+  var comments = document.getElementById('comments').value.trim();
+  if (comments) {
+    lines.push('');
+    lines.push('COMMENTS & RECOMMENDATIONS');
+    lines.push('─'.repeat(30));
+    lines.push(comments);
+  }
+
+  var photoCount = photos.filter(Boolean).length;
+  if (photoCount) {
+    lines.push('');
+    lines.push('PHOTOS: ' + photoCount + ' photo(s) attached — see email attachments');
+  }
+
+  lines.push('');
+  lines.push('─'.repeat(46));
+  lines.push('B+S Commercial Kitchens Pty Ltd');
+  lines.push('57 Plateau Road, Reservoir VIC 3073');
+  lines.push('+61 3 9469 4754  |  clientservices@bscommercialkitchens.com');
+  lines.push('www.bscommercialkitchens.com');
+
+  return lines.join('\n');
+}
+
+// ── SEND ─────────────────────────────────────────────────────────────────
+function sendReport() {
+  if (!recipients.length) { alert('Add at least one recipient email address.'); return; }
+  var report  = buildReport();
+  var biz     = document.getElementById('biz').value || 'Service Report';
+  var date    = document.getElementById('sdate').value;
+  var note    = document.getElementById('send-note').value.trim();
+  var subject = 'B+S Service Report – ' + biz + ' – ' + date;
+  var body    = (note ? note + '\n\n' : '') +
+                '⚠ Please attach your service photos before sending.\n\n' +
+                report;
+  var to      = recipients.join(',');
+  window.location.href = 'mailto:' + encodeURIComponent(to) +
+    '?subject=' + encodeURIComponent(subject) +
+    '&body='    + encodeURIComponent(body);
+  saveJob();
+}
+
+// ── PREVIEW ───────────────────────────────────────────────────────────────
+function previewReport() {
+  document.getElementById('preview-body').textContent = buildReport();
+  document.getElementById('preview-overlay').style.display = 'flex';
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────
+function saveJob() {
+  var pass = Object.values(states).filter(function(v){ return v==='pass'; }).length;
+  var fail = Object.values(states).filter(function(v){ return v==='fail'; }).length;
+  jobs.unshift({
+    biz:  document.getElementById('biz').value,
+    type: document.getElementById('etype').value,
+    date: document.getElementById('sdate').value,
+    tech: document.getElementById('tech').value,
+    pass: pass, fail: fail,
+    hasIssues: fail > 0 || flags.length > 0,
+    flagCount: flags.length,
+    sent: recipients.join(', ')
+  });
+  renderHistory();
+  go('history');
+}
+
+function renderHistory() {
+  var c = document.getElementById('hist-list');
+  if (!jobs.length) {
+    c.innerHTML = '<div class="empty"><div class="empty-icon">📁</div><div class="empty-txt">No jobs yet</div><div class="empty-sub">Sent jobs appear here</div></div>';
+    return;
+  }
+  c.innerHTML = '<div class="card"><div>' + jobs.map(function(j){
+    var d = j.date ? new Date(j.date).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : '—';
+    return '<div class="hist-item">' +
+      '<div class="hist-dot ' + (j.hasIssues?'bad':'ok') + '"></div>' +
+      '<div style="flex:1">' +
+        '<div class="hist-biz">' + j.biz + '</div>' +
+        '<div class="hist-meta">' + (j.type||'—') + ' · ' + d + ' · ' + (j.tech||'—') + '</div>' +
+        '<div>' +
+          '<span class="badge b-pass">✓ ' + j.pass + '</span>' +
+          (j.fail  ? '<span class="badge b-fail">✗ ' + j.fail + '</span>' : '') +
+          (j.flagCount ? '<span class="badge b-warn">⚠ ' + j.flagCount + ' issues</span>' : '') +
+        '</div>' +
+        '<div style="font-size:10px;color:var(--muted);margin-top:3px;">Sent to: ' + j.sent + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('') + '</div></div>';
+}
+
+// ── PASSWORD ──────────────────────────────────────────────────────────────
+var APP_PASSWORD = 'BSservice2026';
+
+function checkPassword() {
+  var entered = document.getElementById('pw-input').value;
+  if (entered === APP_PASSWORD) {
+    document.getElementById('pw-screen').style.display = 'none';
+    sessionStorage.setItem('bs_unlocked', '1');
+  } else {
+    var err = document.getElementById('pw-error');
+    err.textContent = 'Incorrect password. Try again.';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+    setTimeout(function(){ err.textContent = ''; }, 3000);
+  }
+}
+
+// Auto-unlock if already authenticated this session
+if (sessionStorage.getItem('bs_unlocked') === '1') {
+  document.getElementById('pw-screen').style.display = 'none';
+}
+
+</script>
+</body>
+</html>
