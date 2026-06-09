@@ -240,6 +240,7 @@ textarea.inp { resize: none; line-height: 1.5; min-height: 90px; }
   <button class="tab"        id="tab-checklist" onclick="go('checklist')"> <span class="tab-icon">✅</span>Checklist</button>
   <button class="tab"        id="tab-issues"    onclick="go('issues')">    <span class="tab-icon">⚠️</span>Issues</button>
   <button class="tab"        id="tab-send"      onclick="go('send')">      <span class="tab-icon">📧</span>Send</button>
+  <button class="tab"        id="tab-errors"    onclick="go('errors')">    <span class="tab-icon">🔴</span>Errors</button>
   <button class="tab"        id="tab-history"   onclick="go('history')">   <span class="tab-icon">📁</span>History</button>
 </div>
 
@@ -289,6 +290,7 @@ textarea.inp { resize: none; line-height: 1.5; min-height: 90px; }
             <option>B+S Black</option>
             <option>K+</option>
             <option>Rapid</option>
+            <option>SCooker</option>
           </select></div>
         <div class="field"><label class="lbl">Type *</label>
           <select class="inp" id="etype" onchange="onTypeChange()">
@@ -317,11 +319,12 @@ textarea.inp { resize: none; line-height: 1.5; min-height: 90px; }
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-head"><div class="card-icon">📊</div>
-      <div><div class="card-title">Gas Pressure</div><div class="card-sub">Record before starting</div></div>
+  <div class="card" id="preflight-card">
+    <div class="card-head"><div class="card-icon" id="preflight-icon">📊</div>
+      <div><div class="card-title" id="preflight-title">Gas Pressure</div>
+           <div class="card-sub" id="preflight-sub">Record before starting</div></div>
     </div>
-    <div class="card-body">
+    <div class="card-body" id="preflight-body">
       <div class="row2">
         <div class="field"><label class="lbl">Static (kPa)</label>
           <input class="inp" id="p-static" type="number" step="0.01" placeholder="e.g. 2.75" inputmode="decimal"></div>
@@ -394,12 +397,9 @@ textarea.inp { resize: none; line-height: 1.5; min-height: 90px; }
   <div class="card">
     <div class="card-head"><div class="card-icon">📷</div>
       <div><div class="card-title">Photos</div>
-        <div class="card-sub">Attach to the email after sending</div></div>
+        <div class="card-sub">Photos are included automatically in the email</div></div>
     </div>
     <div class="card-body">
-      <div class="alert alert-warn" style="font-size:11px; margin-bottom:12px;">
-        📎 Photos are attached manually in your email app after tapping Send.
-      </div>
       <div class="photo-grid" id="photo-grid"></div>
     </div>
   </div>
@@ -433,12 +433,44 @@ textarea.inp { resize: none; line-height: 1.5; min-height: 90px; }
     </div>
   </div>
 
-  <div class="alert alert-warn" style="font-size:11px;">
-    📎 After your email app opens, attach your photos before hitting send.
+  <button class="btn btn-orange" onclick="sendReport()">📧 Send Report</button>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
+    <button class="btn btn-ghost" onclick="downloadCSV()" style="margin-top:0;">⬇ CSV</button>
+    <button class="btn btn-ghost" onclick="openPhotoReport()" style="margin-top:0;">📸 Photo Report</button>
   </div>
+  <div style="font-size:11px; color:var(--muted); text-align:center; margin-top:8px; line-height:1.5;">
+    Tap <strong>Photo Report</strong> to open a formatted report with your photos — then share or forward it.
+  </div>
+</div>
 
-  <button class="btn btn-orange" onclick="sendReport()">📧 Open Email & Send</button>
-  <button class="btn btn-ghost"  onclick="previewReport()">Preview Report</button>
+<!-- ERROR CODES TAB -->
+<div class="screen" id="screen-errors">
+  <div class="card">
+    <div class="card-head"><div class="card-icon">🔴</div>
+      <div><div class="card-title">SCooker Error Code Lookup</div>
+        <div class="card-sub">Type the code shown on the display</div></div>
+    </div>
+    <div class="card-body">
+      <div class="field">
+        <input class="inp" id="error-search" type="text"
+          placeholder="e.g. E1, E6, EA, EE..."
+          oninput="searchErrors()"
+          style="text-transform:uppercase; font-size:18px; font-weight:700; letter-spacing:2px; text-align:center;">
+      </div>
+      <div class="field" style="margin-top:4px;">
+        <select class="inp" id="error-product" onchange="searchErrors()" style="font-size:13px;">
+          <option value="">All SCooker products</option>
+          <option value="boiling">Induction Boiling Top / Oven</option>
+          <option value="griddle">Induction Griddle</option>
+          <option value="fryer">Induction Fryer</option>
+          <option value="noodle">Induction Noodle / Pasta Cooker</option>
+          <option value="electric">Electric (Noodle / Pasta Cooker)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div id="error-results"></div>
+  <div id="error-all"></div>
 </div>
 
 <!-- HISTORY TAB -->
@@ -473,7 +505,18 @@ var TYPES = {
     'Noodle / Pasta Cooker','Waterless Wok Table','Waterless Stock Pot','Waterless Steamer','Target Top'],
   'K+': ['Grill Plate','Oven Range','Boiling Top','Char Broiler','Turbo Fryer',
     'Noodle / Pasta Cooker','Waterless Wok Table','Waterless Stock Pot','Waterless Steamer','Deck Steamer','Duck Oven'],
-  'Rapid': ['Gas Fryer','Electric Fryer']
+  'Rapid': ['Gas Fryer','Electric Fryer'],
+  'SCooker': [
+    'Induction Boiling Top','Induction Boiling Top With Oven',
+    'Induction Griddle (Smooth)','Induction Griddle (Grooved)',
+    'Induction Fryer','Induction Noodle Cooker','Induction Pasta Cooker',
+    'Induction Bain Marie','Induction Wok','Induction Pan Noodle Cooker',
+    'Induction Steamer','Induction Multi-Functional Cooker','Induction Stock Pot',
+    'Electric Boiling Top','Electric Boiling Top With Oven',
+    'Electric Infrared Top','Electric Infrared Top With Oven',
+    'Electric Griddle','Electric Fryer (SCooker)',
+    'Electric Noodle Cooker','Electric Pasta Cooker'
+  ]
 };
 
 var CHECKLISTS = {
@@ -634,6 +677,213 @@ var CHECKLISTS = {
     {t:'Thermocouple',c:false},
     {t:'Boiling top burners (if combination)',c:false},
     {t:'Oven function (if combination)',c:false}
+  ],
+  'Induction Boiling Top': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Temperature / power level accuracy',c:false},
+    {t:'Glass ceramic surface condition',c:false},
+    {t:'Cooling fan operation',c:false},
+    {t:'Error codes / fault indicators',c:false},
+    {t:'Cabinet door & hinges',c:false},
+    {t:'General condition & cleanliness',c:false}
+  ],
+  'Induction Boiling Top With Oven': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Oven element & thermostat',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Temperature / power level accuracy',c:false},
+    {t:'Glass ceramic surface condition',c:false},
+    {t:'Oven door seal & hinge',c:false},
+    {t:'Cooling fan operation',c:false},
+    {t:'Error codes / fault indicators',c:false},
+    {t:'General condition & cleanliness',c:false}
+  ],
+  'Induction Griddle (Smooth)': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Griddle plate surface condition',c:false},
+    {t:'Temperature accuracy',c:false},
+    {t:'Cooling fan operation',c:false},
+    {t:'Error codes / fault indicators',c:false},
+    {t:'Drip tray & grease management',c:false}
+  ],
+  'Induction Griddle (Grooved)': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Griddle plate surface condition',c:false},
+    {t:'Temperature accuracy',c:false},
+    {t:'Cooling fan operation',c:false},
+    {t:'Error codes / fault indicators',c:false},
+    {t:'Drip tray & grease management',c:false}
+  ],
+  'Induction Fryer': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ High-limit safety cut-out',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Temperature accuracy',c:false},
+    {t:'Oil drain valve operation',c:false},
+    {t:'Fryer basket condition',c:false},
+    {t:'Cooling fan operation',c:false},
+    {t:'Error codes / fault indicators',c:false}
+  ],
+  'Induction Noodle Cooker': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Temperature accuracy',c:false},
+    {t:'Water inlet & overflow',c:false},
+    {t:'Basket condition',c:false},
+    {t:'Cooling fan operation',c:false},
+    {t:'Error codes / fault indicators',c:false}
+  ],
+  'Induction Pasta Cooker': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Temperature accuracy',c:false},
+    {t:'Water inlet & overflow',c:false},
+    {t:'Basket condition',c:false},
+    {t:'Cooling fan operation',c:false},
+    {t:'Error codes / fault indicators',c:false}
+  ],
+  'Induction Bain Marie': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Temperature accuracy & holding temp',c:false},
+    {t:'Pan insert condition',c:false},
+    {t:'Error codes / fault indicators',c:false},
+    {t:'General condition & cleanliness',c:false}
+  ],
+  'Induction Wok': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Power level & temperature accuracy',c:false},
+    {t:'Wok ring & holder condition',c:false},
+    {t:'Water inlet & overflow (if waterless)',c:false},
+    {t:'Cooling fan operation',c:false},
+    {t:'Error codes / fault indicators',c:false},
+    {t:'Drain & waste pipes',c:false}
+  ],
+  'Induction Pan Noodle Cooker': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Temperature accuracy',c:false},
+    {t:'Pan & basket condition',c:false},
+    {t:'Water inlet & overflow',c:false},
+    {t:'Error codes / fault indicators',c:false}
+  ],
+  'Induction Steamer': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Steam generation',c:false},
+    {t:'Water inlet & drain',c:false},
+    {t:'Door seals & latches',c:false},
+    {t:'Temperature accuracy',c:false},
+    {t:'Error codes / fault indicators',c:false}
+  ],
+  'Induction Multi-Functional Cooker': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'All cooking modes functional',c:false},
+    {t:'Temperature accuracy',c:false},
+    {t:'Glass ceramic surface condition',c:false},
+    {t:'Cooling fan operation',c:false},
+    {t:'Error codes / fault indicators',c:false}
+  ],
+  'Induction Stock Pot': [
+    {t:'★ Induction coil operation & power output',c:true},
+    {t:'★ Control panel & display function',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Stainless steel pot condition',c:false},
+    {t:'Release valve operation',c:false},
+    {t:'Temperature accuracy',c:false},
+    {t:'Error codes / fault indicators',c:false}
+  ],
+  'Electric Boiling Top': [
+    {t:'★ All elements – heat & performance',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'★ Control knobs & switches',c:true},
+    {t:'Element condition & resistance',c:false},
+    {t:'Temperature accuracy',c:false},
+    {t:'Solid plate surface condition',c:false},
+    {t:'Cabinet door & hinges',c:false},
+    {t:'General condition & cleanliness',c:false}
+  ],
+  'Electric Boiling Top With Oven': [
+    {t:'★ All elements – heat & performance',c:true},
+    {t:'★ Oven element & thermostat',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'★ Control knobs & switches',c:true},
+    {t:'Temperature accuracy',c:false},
+    {t:'Solid plate surface condition',c:false},
+    {t:'Oven door seal & hinge',c:false},
+    {t:'General condition & cleanliness',c:false}
+  ],
+  'Electric Infrared Top': [
+    {t:'★ All infrared elements – heat & performance',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'★ Control panel & switches',c:true},
+    {t:'Infrared element condition',c:false},
+    {t:'Temperature accuracy',c:false},
+    {t:'Glass ceramic surface condition',c:false},
+    {t:'Error codes / fault indicators',c:false}
+  ],
+  'Electric Infrared Top With Oven': [
+    {t:'★ All infrared elements – heat & performance',c:true},
+    {t:'★ Oven element & thermostat',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'★ Control panel & switches',c:true},
+    {t:'Temperature accuracy',c:false},
+    {t:'Glass ceramic surface condition',c:false},
+    {t:'Oven door seal & hinge',c:false},
+    {t:'Error codes / fault indicators',c:false}
+  ],
+  'Electric Griddle': [
+    {t:'★ Element condition & heat output',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'★ Control knobs & thermostat',c:true},
+    {t:'Temperature accuracy',c:false},
+    {t:'Griddle plate surface condition',c:false},
+    {t:'Drip tray & grease management',c:false},
+    {t:'General condition & cleanliness',c:false}
+  ],
+  'Electric Fryer (SCooker)': [
+    {t:'★ Element condition & resistance',c:true},
+    {t:'★ High-limit safety cut-out',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'Thermostat calibration',c:false},
+    {t:'Control panel function',c:false},
+    {t:'Oil drain valve',c:false},
+    {t:'Fryer basket condition',c:false}
+  ],
+  'Electric Noodle Cooker': [
+    {t:'★ Element condition & heat output',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'★ Control knobs & thermostat',c:true},
+    {t:'Temperature accuracy',c:false},
+    {t:'Water inlet & overflow',c:false},
+    {t:'Basket condition',c:false},
+    {t:'General condition & cleanliness',c:false}
+  ],
+  'Electric Pasta Cooker': [
+    {t:'★ Element condition & heat output',c:true},
+    {t:'★ Earth continuity check',c:true},
+    {t:'★ Control knobs & thermostat',c:true},
+    {t:'Temperature accuracy',c:false},
+    {t:'Water inlet & overflow',c:false},
+    {t:'Basket condition',c:false},
+    {t:'General condition & cleanliness',c:false}
   ]
 };
 
@@ -660,6 +910,60 @@ function onRangeChange() {
     var o = document.createElement('option'); o.value = o.textContent = t; sel.appendChild(o);
   });
   checklist = []; states = {};
+
+  var gasField = document.getElementById('gas').parentElement;
+  var warrantyField = document.getElementById('warranty').parentElement;
+
+  if (r === 'SCooker') {
+    // Hide gas type, show N/A for warranty label change
+    gasField.style.display = 'none';
+    warrantyField.style.display = 'none';
+
+    // Swap preflight card to electrical checks
+    document.getElementById('preflight-icon').textContent = '⚡';
+    document.getElementById('preflight-title').textContent = 'Pre-Start Electrical Checks';
+    document.getElementById('preflight-sub').textContent = 'Confirm before starting service';
+    document.getElementById('preflight-body').innerHTML =
+      '<div class="field">' +
+        '<label class="lbl">Power On — Unit Starts Normally</label>' +
+        '<select class="inp" id="p-static">' +
+          '<option value="">Select...</option>' +
+          '<option>Yes — normal startup</option>' +
+          '<option>No — fails to start</option>' +
+          '<option>Partial — starts with errors</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label class="lbl">Display / Indicator Lights</label>' +
+        '<select class="inp" id="p-dynamic">' +
+          '<option value="">Select...</option>' +
+          '<option>All lights normal</option>' +
+          '<option>Error code displayed</option>' +
+          '<option>No display / blank screen</option>' +
+          '<option>Partial display</option>' +
+        '</select>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label class="lbl">Error Code on Display (if any)</label>' +
+        '<input class="inp" id="p-errorcode" type="text" placeholder="e.g. E6, EA — leave blank if none" style="text-transform:uppercase; letter-spacing:1px;">' +
+      '</div>';
+  } else {
+    // Restore gas fields
+    gasField.style.display = '';
+    warrantyField.style.display = '';
+    gasField.style.opacity = '1';
+
+    document.getElementById('preflight-icon').textContent = '📊';
+    document.getElementById('preflight-title').textContent = 'Gas Pressure';
+    document.getElementById('preflight-sub').textContent = 'Record before starting';
+    document.getElementById('preflight-body').innerHTML =
+      '<div class="row2">' +
+        '<div class="field"><label class="lbl">Static (kPa)</label>' +
+          '<input class="inp" id="p-static" type="number" step="0.01" placeholder="e.g. 2.75" inputmode="decimal"></div>' +
+        '<div class="field"><label class="lbl">Dynamic (kPa)</label>' +
+          '<input class="inp" id="p-dynamic" type="number" step="0.01" placeholder="e.g. 2.50" inputmode="decimal"></div>' +
+      '</div>';
+  }
 }
 
 function onTypeChange() {
@@ -754,7 +1058,7 @@ function renderPhotoGrid() {
     return '<label class="photo-slot" id="pslot-'+i+'">' +
       (photos[i]
         ? '<img src="'+photos[i]+'">' + '<div class="photo-slot-overlay">✓ ' + label + '</div>'
-        : '<span style="font-size:22px;">📷</span><span style="font-size:10px;color:var(--muted);text-align:center;padding:0 6px;">'+label+'</span>'
+        : '<span style="font-size:22px;">📷</span><span style="font-size:10px;color:var(--muted);text-align:center;padding:0 6px;">Tap to take photo</span>'
       ) +
       '<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handlePhoto(event,'+i+')">' +
       '</label>';
@@ -822,8 +1126,16 @@ function buildReport() {
   lines.push('Serial / Mfg:    ' + v('serial'));
   lines.push('Gas Type:        ' + gas);
   lines.push('Warranty:        ' + (v('warranty') === '—' ? 'Unknown' : v('warranty')));
-  lines.push('Static Pressure: ' + v('p-static') + ' kPa');
-  lines.push('Dynamic Press.:  ' + v('p-dynamic') + ' kPa');
+  var range = v('erange');
+  if (range === 'SCooker') {
+    lines.push('Power On:        ' + v('p-static'));
+    lines.push('Display Lights:  ' + v('p-dynamic'));
+    var errCode = document.getElementById('p-errorcode') ? document.getElementById('p-errorcode').value : '';
+    if (errCode) lines.push('Error Code:      ' + errCode);
+  } else {
+    lines.push('Static Pressure: ' + v('p-static') + ' kPa');
+    lines.push('Dynamic Press.:  ' + v('p-dynamic') + ' kPa');
+  }
   lines.push('');
   lines.push('CHECKLIST  ✓ ' + pass + ' Pass  |  ✗ ' + fail + ' Fail  |  ' + na + ' N/A');
   lines.push('─'.repeat(46));
@@ -867,19 +1179,151 @@ function buildReport() {
 // ── SEND ─────────────────────────────────────────────────────────────────
 function sendReport() {
   if (!recipients.length) { alert('Add at least one recipient email address.'); return; }
-  var report  = buildReport();
+
   var biz     = document.getElementById('biz').value || 'Service Report';
   var date    = document.getElementById('sdate').value;
   var note    = document.getElementById('send-note').value.trim();
-  var subject = 'B+S Service Report – ' + biz + ' – ' + date;
-  var body    = (note ? note + '\n\n' : '') +
-                '⚠ Please attach your service photos before sending.\n\n' +
-                report;
+  var subject = 'B+S Service Report - ' + biz + ' - ' + date;
   var to      = recipients.join(',');
+  var report  = buildReport();
+  var plainBody = (note ? note + '\n\n' : '') + report;
+
+  // Step 1: open email app with report text
   window.location.href = 'mailto:' + encodeURIComponent(to) +
     '?subject=' + encodeURIComponent(subject) +
-    '&body='    + encodeURIComponent(body);
+    '&body='    + encodeURIComponent(plainBody);
+
   saveJob();
+}
+
+// ── PHOTO REPORT ────────────────────────────────────────────────────────────
+function openPhotoReport() {
+  var biz    = document.getElementById('biz').value || 'Service Report';
+  var date   = document.getElementById('sdate').value;
+  var note   = document.getElementById('send-note').value.trim();
+  var report = buildReport();
+  var photoLabels = ['Before service','After service','Non-warranty issue','Gas connections','Other'];
+
+  var reportLines = report.split('\n').map(function(l) {
+    if (l.indexOf('═') === 0 || l.indexOf('─') === 0)
+      return '<hr style="border:none;border-top:1px solid #e2e8f0;margin:8px 0;">';
+    if (l.indexOf('B+S COMMERCIAL') === 0)
+      return '<h2 style="color:#1a3a5c;font-family:Arial,sans-serif;font-size:16px;margin:0 0 4px;">' + l + '</h2>';
+    if (l.length > 2 && l === l.toUpperCase() && l.trim() !== '' && !l.match(/[✓✗⚠—★]/))
+      return '<h3 style="color:#1a3a5c;font-family:Arial,sans-serif;font-size:12px;margin:14px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">' + l + '</h3>';
+    if (l.indexOf('✓') === 0)
+      return '<div style="color:#16a34a;font-size:12px;font-family:monospace;padding:2px 0;">' + l + '</div>';
+    if (l.indexOf('✗') === 0)
+      return '<div style="color:#dc2626;font-weight:bold;font-size:12px;font-family:monospace;padding:2px 0;">' + l + '</div>';
+    if (l.indexOf('⚠') === 0)
+      return '<div style="color:#d97706;font-weight:bold;font-size:12px;font-family:Arial,sans-serif;padding:3px 0;">' + l + '</div>';
+    if (l.trim() === '') return '<div style="height:6px;"></div>';
+    return '<div style="font-size:12px;font-family:monospace;color:#1e293b;padding:1px 0;">' + l + '</div>';
+  }).join('');
+
+  var photoHTML = '';
+  var hasPhotos = photos.some(function(p) { return p; });
+  if (hasPhotos) {
+    photoHTML = '<div style="margin-top:24px;border-top:2px solid #1a3a5c;padding-top:16px;">' +
+      '<h3 style="color:#1a3a5c;font-family:Arial,sans-serif;font-size:14px;margin:0 0 16px;">Service Photos</h3>';
+    photos.forEach(function(p, i) {
+      if (p) {
+        photoHTML += '<div style="margin-bottom:20px;">' +
+          '<div style="font-size:11px;font-weight:bold;color:#475569;font-family:Arial,sans-serif;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">' + photoLabels[i] + '</div>' +
+          '<img src="' + p + '" style="width:100%;max-width:560px;border-radius:8px;border:1px solid #e2e8f0;display:block;">' +
+          '</div>';
+      }
+    });
+    photoHTML += '</div>';
+  }
+
+  var noteHTML = note ? '<div style="background:#fff4ed;border:1px solid #fed7aa;border-radius:8px;padding:12px;margin-bottom:16px;font-family:Arial,sans-serif;font-size:13px;color:#1e293b;">' + note + '</div>' : '';
+
+  var page = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>B+S Service Report - ' + biz + '</title>' +
+    '<style>body{margin:0;background:#f0f4f8;}' +
+    '@media print{body{background:white;}.no-print{display:none!important;}}' +
+    '</style></head><body>' +
+    '<div style="max-width:640px;margin:0 auto;background:white;min-height:100vh;">' +
+    '<div style="background:#1a3a5c;padding:20px 24px;">' +
+    '<div style="font-size:20px;font-weight:900;color:white;font-family:Arial,sans-serif;">B+S Service Report</div>' +
+    '<div style="font-size:11px;color:rgba(255,255,255,0.55);font-family:Arial,sans-serif;margin-top:3px;">B+S Commercial Kitchens</div>' +
+    '</div>' +
+    '<div style="background:#f97316;height:4px;"></div>' +
+    '<div style="padding:20px 20px 40px;">' +
+    '<div class="no-print" style="background:#e8f0f9;border-radius:8px;padding:12px;margin-bottom:16px;font-family:Arial,sans-serif;font-size:12px;color:#1a3a5c;">' +
+    '📤 <strong>To share with photos:</strong> Use the Share button in your browser, or take a screenshot and attach to your email.' +
+    '</div>' +
+    noteHTML +
+    reportLines +
+    photoHTML +
+    '</div>' +
+    '<div style="background:#f8fafc;padding:14px 20px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;font-family:Arial,sans-serif;">' +
+    'B+S Commercial Kitchens Pty Ltd · 57 Plateau Road Reservoir VIC 3073 · +61 3 9469 4754 · clientservices@bscommercialkitchens.com' +
+    '</div></div></body></html>';
+
+  var blob = new Blob([page], {type: 'text/html'});
+  var url  = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+}
+
+// ── CSV EXPORT ──────────────────────────────────────────────────────────────
+function downloadCSV() {
+  function esc(val) {
+    val = (val || '').toString();
+    val = val.split('\n').join(' ');
+    val = val.split('"').join('""');
+    return val;
+  }
+  function v(id){ return esc(document.getElementById(id).value); }
+
+  var pass=0, fail=0, na=0;
+  Object.values(states).forEach(function(s){
+    if(s==='pass') pass++; else if(s==='fail') fail++; else if(s==='na') na++;
+  });
+  var failItems = [];
+  checklist.forEach(function(item,i){ if(states[i]==='fail') failItems.push(item.t); });
+  var nwIssues = flags.map(function(f){ return f.text + (f.cat ? ' ('+f.cat+')' : ''); }).join(' | ');
+
+  var headers = [
+    'Date','Business','Address','Contact','Phone','Technician',
+    'Range','Equipment Type','Model','Serial / Mfg Date',
+    'Gas Type','Warranty','Static Pressure (kPa)','Dynamic Pressure (kPa)',
+    'Total Items','Passed','Failed','N/A',
+    'Failed Items','Non-Warranty Issues','Comments'
+  ];
+
+  var gasVal = document.getElementById('gas').value === 'ng' ? 'Natural Gas (NG)' : 'LPG';
+  var warVal = document.getElementById('warranty').value || 'Unknown';
+
+  var row = [
+    v('sdate'), v('biz'), v('address'), v('contact'), v('phone'), v('tech'),
+    v('erange'), v('etype'), v('model'), v('serial'),
+    gasVal, warVal,
+    v('p-static'), v('p-dynamic'),
+    checklist.length, pass, fail, na,
+    failItems.join(' | '),
+    nwIssues,
+    v('comments')
+  ];
+
+  var csvHeader = headers.map(function(h){ return '"' + h + '"'; }).join(',');
+  var csvRow    = row.map(function(c){ return '"' + c + '"'; }).join(',');
+  var csv       = csvHeader + '\n' + csvRow;
+
+  var blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  var bizRaw = document.getElementById('biz').value || 'Report';
+  var biz  = bizRaw.split(' ').join('_');
+  var date = document.getElementById('sdate').value || new Date().toISOString().split('T')[0];
+  a.href     = url;
+  a.download = 'BS_Service_' + biz + '_' + date + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ── PREVIEW ───────────────────────────────────────────────────────────────
@@ -951,6 +1395,192 @@ function checkPassword() {
 if (sessionStorage.getItem('bs_unlocked') === '1') {
   document.getElementById('pw-screen').style.display = 'none';
 }
+
+
+// ── ERROR CODES ───────────────────────────────────────────────────────────────
+var ERROR_CODES = [
+  // INDUCTION BOILING TOP / OVEN (and shared with Griddle, Noodle, Fryer)
+  {code:'E1', product:'boiling', meaning:'No pot detected', cause:'1. No pot on surface 2. Invalid/incompatible pot', solution:'1. Place pot on surface 2. Use compatible induction pot'},
+  {code:'E2', product:'boiling', meaning:'Coil overheating', cause:'1. Faulty coil temperature sensor 2. Cooling fan not working 3. Defective control board', solution:'1. Replace coil temperature sensor 2. Replace cooling fan 3. Replace control board'},
+  {code:'E3', product:'boiling', meaning:'Coil temp sensor open circuit', cause:'1. Loose coil temp sensor 2. Damaged coil temp sensor', solution:'1. Reconnect coil temp sensor 2. Replace coil temp sensor'},
+  {code:'E4', product:'boiling', meaning:'IGBT over-temperature', cause:'1. Cooling fan not working 2. Faulty control board', solution:'1. Turn on cooling fan switch or replace fan 2. Replace control board'},
+  {code:'E5', product:'boiling', meaning:'IGBT temp sensor open circuit', cause:'1. Faulty circuit for IGBT temperature probe on control board', solution:'1. Replace control board'},
+  {code:'E6', product:'boiling', meaning:'Pot over-temperature', cause:'1. Pot dry-boiling 2. Cooling fan not working 3. Poorly designed or blocked air vent 4. Faulty control board', solution:'1. Cool pot down & reheat 2. Replace cooling fan 3. Duct optimisation/unblocking 4. Replace control board'},
+  {code:'E7', product:'boiling', meaning:'Pot temp sensor open circuit', cause:'1. Loose pot temp sensor 2. Damaged pot temp sensor', solution:'1. Reconnect pot temp sensor 2. Replace pot temp sensor'},
+  {code:'E8', product:'boiling', meaning:'Input voltage low or phase loss', cause:'1. Mains voltage too low 2. Phase loss (3-phase)', solution:'1. Wait for voltage recovery 2. Solve phase loss problem'},
+  {code:'E9', product:'boiling', meaning:'Input voltage too high', cause:'1. Mains voltage too high', solution:'1. Wait for voltage recovery'},
+  {code:'EC', product:'boiling', meaning:'Load failure', cause:'1. Damaged coil 2. Faulty control board', solution:'1. Replace coil 2. Replace control board'},
+  {code:'EE', product:'boiling', meaning:'Faulty heat switch', cause:'1. Damaged heat switch', solution:'1. Replace heat switch'},
+  {code:'EF', product:'boiling', meaning:'Hardware failure', cause:'1. Faulty control board', solution:'1. Replace control board'},
+  {code:'EH', product:'boiling', meaning:'Drive power supply fault', cause:'1. Faulty control board', solution:'1. Replace control board'},
+  {code:'En', product:'boiling', meaning:'Comm fault', cause:'1. Faulty display cable connection 2. Faulty display screen 3. Faulty control board', solution:'1. Replace display cable 2. Replace display screen 3. Replace control board'},
+  {code:'EJ', product:'boiling', meaning:'Unsoldered switch resistor', cause:'1. Faulty heat switch', solution:'1. Replace heat switch'},
+
+  // INDUCTION GRIDDLE (same codes as boiling top plus below)
+  {code:'E0', product:'griddle', meaning:'Power supply fault', cause:'1. Three-phase input voltage below 325V 2. Voltage detection abnormal', solution:'1. Wait for voltage to return to normal 2. Replace control board'},
+  {code:'E1', product:'griddle', meaning:'Power supply fault', cause:'1. Three-phase input voltage above 460V 2. Voltage detection abnormal', solution:'1. Wait for voltage to return to normal 2. Replace control board'},
+  {code:'E2', product:'griddle', meaning:'Power supply fault', cause:'1. Missing phase in three-phase electricity 2. Voltage detection abnormal', solution:'1. Recheck and properly connect three-phase electricity 2. Replace control board'},
+  {code:'E4', product:'griddle', meaning:'Coil fault', cause:'1. Coil temperature sensor short-circuited', solution:'1. Replace the coil temperature sensor'},
+  {code:'E5', product:'griddle', meaning:'Coil fault', cause:'1. Damage to coil temperature sensor wire 2. Coil temperature sensor wire not properly connected', solution:'1. Replace coil temperature sensor wire 2. Reconnect the coil temperature sensor wire properly'},
+  {code:'E6', product:'griddle', meaning:'Dry burning', cause:'1. Working at high temperatures for a long time 2. Control board fault causing fan not to rotate 3. Fan fault/fan abnormal 4. Coil airway abnormal or blocked 5. Poor coil temperature sensor wire', solution:'1. Pause heating and wait for coil to cool 2. Replace control board 3. Replace fan 4. Clean filter net and clear heat dissipation airway 5. Replace and reinstall temperature sensor wire'},
+  {code:'E8/E9', product:'griddle', meaning:'Mainunit over-temperature', cause:'1. IGBT temperature sensor malfunction or plug detached', solution:'1. Replace the IGBT temperature sensor or reconnect it'},
+  {code:'EA', product:'griddle', meaning:'Host high temperature', cause:'1. Working in high temperature for long time 2. Controller board faulty 3. Movement cooling fan damaged 4. Air duct blocked 5. IGBT temperature sensor faulty', solution:'1. Stop heating and start machine after cooling 2. Replace control board 3. Replace movement cooling fan 4. Clean air filter/heat dissipation air duct 5. Replace IGBT temperature sensor'},
+  {code:'EB', product:'griddle', meaning:'Load failure / No pot', cause:'1. Wiring terminal of cable tray improperly contacted or burned out 2. IGBT faulty 3. Coil burnt or damaged 4. Current sensor faulty', solution:'1. Tighten wiring terminal or replace cable tray 2. Replace IGBT 3. Replace cable tray 4. Replace current sensor'},
+  {code:'EC/ED', product:'griddle', meaning:'Drive abnormal / No pot', cause:'1. Coil short circuit 2. Control board damaged 3. Hall current sensor faulty', solution:'1. Replace coil 2. Replace control board 3. Replace Hall current sensor'},
+  {code:'EE', product:'griddle', meaning:'Power failure', cause:'1. Power input of control board abnormal 2. Control board damaged 3. Lack of phase 4. Bad safety plate', solution:'1. Check transformer and replace if damaged 2. Replace control board 3. Check and reconnect power supply 4. Replace safety plate'},
+  {code:'EL', product:'griddle', meaning:'Startup abnormal', cause:'1. Device does not set gear back to 0 when turned off or turned on', solution:'1. Shift gears back to 0 and restart'},
+
+  // INDUCTION FRYER (same codes as griddle)
+  {code:'E0', product:'fryer', meaning:'Power supply fault', cause:'1. Three-phase input voltage below 325V 2. Voltage detection abnormal', solution:'1. Wait for voltage to return to normal 2. Replace control board'},
+  {code:'E1', product:'fryer', meaning:'Power supply fault', cause:'1. Three-phase input voltage above 460V 2. Voltage detection abnormal', solution:'1. Wait for voltage to return to normal 2. Replace control board'},
+  {code:'E2', product:'fryer', meaning:'Power supply fault', cause:'1. Missing phase in three-phase electricity 2. Voltage detection abnormal', solution:'1. Recheck and properly connect three-phase electricity 2. Replace control board'},
+  {code:'E4', product:'fryer', meaning:'Coil fault', cause:'1. Coil temperature sensor short-circuited', solution:'1. Replace the coil temperature sensor'},
+  {code:'E5', product:'fryer', meaning:'Coil fault', cause:'1. Damage to coil temperature sensor wire 2. Wire not properly connected', solution:'1. Replace coil temperature sensor wire 2. Reconnect properly'},
+  {code:'E6', product:'fryer', meaning:'Dry burning', cause:'1. Working at high temp for long time 2. Control board fault 3. Fan fault 4. Coil airway blocked 5. Poor sensor wire', solution:'1. Pause and cool down 2. Replace control board 3. Replace fan 4. Clean heat dissipation airway 5. Replace sensor wire'},
+  {code:'E8/E9', product:'fryer', meaning:'Mainunit over-temperature', cause:'1. IGBT temperature sensor malfunction or plug detached', solution:'1. Replace or reconnect IGBT temperature sensor'},
+  {code:'EA', product:'fryer', meaning:'Host high temperature', cause:'1. Working in high temp long time 2. Controller board faulty 3. Cooling fan damaged 4. Air duct blocked 5. IGBT sensor faulty', solution:'1. Stop heating and cool 2. Replace control board 3. Replace cooling fan 4. Clean air filter 5. Replace IGBT sensor'},
+  {code:'EB', product:'fryer', meaning:'Load failure / No pot', cause:'1. Wiring terminal burned out 2. IGBT faulty 3. Coil damaged 4. Current sensor faulty', solution:'1. Tighten or replace cable tray 2. Replace IGBT 3. Replace cable tray 4. Replace current sensor'},
+  {code:'EC/ED', product:'fryer', meaning:'Drive abnormal / No pot', cause:'1. Coil short circuit 2. Control board damaged 3. Hall current sensor faulty', solution:'1. Replace coil 2. Replace control board 3. Replace Hall current sensor'},
+  {code:'EE', product:'fryer', meaning:'Power failure', cause:'1. Control board power input abnormal 2. Control board damaged 3. Lack of phase 4. Bad safety plate', solution:'1. Check transformer 2. Replace control board 3. Check power supply 4. Replace safety plate'},
+  {code:'EL', product:'fryer', meaning:'Startup abnormal', cause:'1. Device gear not set back to 0 on power off/on', solution:'1. Shift gears back to 0 and restart'},
+
+  // INDUCTION NOODLE / PASTA COOKER (same as griddle/fryer)
+  {code:'E0', product:'noodle', meaning:'Power supply fault', cause:'1. Three-phase input voltage below 325V 2. Voltage detection abnormal', solution:'1. Wait for voltage to return to normal 2. Replace control board'},
+  {code:'E1', product:'noodle', meaning:'Power supply fault', cause:'1. Three-phase input voltage above 460V 2. Voltage detection abnormal', solution:'1. Wait for voltage to return to normal 2. Replace control board'},
+  {code:'E2', product:'noodle', meaning:'Power supply fault', cause:'1. Missing phase in three-phase electricity 2. Voltage detection abnormal', solution:'1. Recheck and properly connect three-phase electricity 2. Replace control board'},
+  {code:'E4', product:'noodle', meaning:'Coil fault', cause:'1. Coil temperature sensor short-circuited', solution:'1. Replace the coil temperature sensor'},
+  {code:'E5', product:'noodle', meaning:'Coil fault', cause:'1. Damage to coil temperature sensor wire 2. Wire not properly connected', solution:'1. Replace coil temperature sensor wire 2. Reconnect properly'},
+  {code:'E6', product:'noodle', meaning:'Dry burning', cause:'1. Working at high temp for long time 2. Control board fault 3. Fan fault 4. Coil airway blocked 5. Poor sensor wire', solution:'1. Pause and cool down 2. Replace control board 3. Replace fan 4. Clean heat dissipation airway 5. Replace sensor wire'},
+  {code:'E8/E9', product:'noodle', meaning:'Mainunit over-temperature', cause:'1. IGBT temperature sensor malfunction or plug detached', solution:'1. Replace or reconnect IGBT temperature sensor'},
+  {code:'EA', product:'noodle', meaning:'Host high temperature', cause:'1. Working in high temp long time 2. Controller board faulty 3. Cooling fan damaged 4. Air duct blocked 5. IGBT sensor faulty', solution:'1. Stop heating and cool 2. Replace control board 3. Replace cooling fan 4. Clean air filter 5. Replace IGBT sensor'},
+  {code:'EB', product:'noodle', meaning:'Load failure / No pot', cause:'1. Wiring terminal burned out 2. IGBT faulty 3. Coil damaged 4. Current sensor faulty', solution:'1. Tighten or replace cable tray 2. Replace IGBT 3. Replace cable tray 4. Replace current sensor'},
+  {code:'EC/ED', product:'noodle', meaning:'Drive abnormal / No pot', cause:'1. Coil short circuit 2. Control board damaged 3. Hall current sensor faulty', solution:'1. Replace coil 2. Replace control board 3. Replace Hall current sensor'},
+  {code:'EE', product:'noodle', meaning:'Power failure', cause:'1. Control board power input abnormal 2. Control board damaged 3. Lack of phase 4. Bad safety plate', solution:'1. Check transformer 2. Replace control board 3. Check power supply 4. Replace safety plate'},
+  {code:'EL', product:'noodle', meaning:'Startup abnormal', cause:'1. Device gear not set back to 0 on power off/on', solution:'1. Shift gears back to 0 and restart'},
+
+  // ELECTRIC NOODLE / PASTA COOKER (symptom-based)
+  {code:'Power-on light off', product:'electric', meaning:'No power / power indicator not illuminating', cause:'1. No power input 2. Power indicator light damaged 3. Internal control circuit failure', solution:'1. Check earth leakage circuit breaker and external power supply 2. Replace power indicator light 3. Repair internal control circuit'},
+  {code:'Heat but no light', product:'electric', meaning:'Can heat up but operation indicator light does not illuminate', cause:'1. Operation indicator light damaged', solution:'1. Replace operation indicator light'},
+  {code:'No heat', product:'electric', meaning:'Does not heat up', cause:'1. Temperature adjustment knob switch damaged 2. Heating pipe damaged 3. Internal control circuit faulty', solution:'1. Replace temperature adjustment knob switch 2. Replace heating pipe 3. Repair internal control circuit'},
+  {code:'Breaker trips on', product:'electric', meaning:'Power-on earth leakage circuit breaker trips', cause:'1. Distribution box failure or abnormal power cord 2. Earth leakage circuit breaker damaged 3. Internal control circuit fault', solution:'1. Check for short circuits between neutral, live and ground wires 2. Replace earth leakage circuit breaker 3. Repair internal control circuit'},
+  {code:'Breaker trips during', product:'electric', meaning:'Earth leakage circuit breaker trips during operation', cause:'1. Poor internal insulation of heating pipe 2. Internal control circuit fault', solution:'1. Replace heating pipe 2. Repair internal control circuit'}
+];
+
+function searchErrors() {
+  var query   = document.getElementById('error-search').value.trim().toUpperCase();
+  var product = document.getElementById('error-product').value;
+  var results = document.getElementById('error-results');
+  var allDiv  = document.getElementById('error-all');
+
+  if (!query) {
+    results.innerHTML = '';
+    renderAllErrors(product);
+    return;
+  }
+
+  allDiv.innerHTML = '';
+  var matches = ERROR_CODES.filter(function(e) {
+    var codeMatch    = e.code.toUpperCase().indexOf(query) !== -1;
+    var productMatch = !product || e.product === product;
+    return codeMatch && productMatch;
+  });
+
+  if (!matches.length) {
+    results.innerHTML = '<div class="alert alert-warn">No matching error code found for <strong>' + query + '</strong>. Check the code again or contact B+S.</div>';
+    return;
+  }
+
+  results.innerHTML = matches.map(function(e) {
+    return renderErrorCard(e);
+  }).join('');
+}
+
+function renderAllErrors(product) {
+  var allDiv = document.getElementById('error-all');
+  var filtered = product
+    ? ERROR_CODES.filter(function(e){ return e.product === product; })
+    : ERROR_CODES;
+
+  // Group by product
+  var groups = {};
+  filtered.forEach(function(e) {
+    if (!groups[e.product]) groups[e.product] = [];
+    groups[e.product].push(e);
+  });
+
+  var productNames = {
+    boiling: 'Induction Boiling Top / Oven',
+    griddle: 'Induction Griddle',
+    fryer:   'Induction Fryer',
+    noodle:  'Induction Noodle / Pasta Cooker',
+    electric:'Electric Noodle / Pasta Cooker'
+  };
+
+  var html = '';
+  Object.keys(groups).forEach(function(p) {
+    html += '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);padding:8px 0 6px;">' + (productNames[p]||p) + '</div>';
+    html += '<div class="card" style="margin-bottom:8px;"><div>';
+    groups[p].forEach(function(e) {
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:11px 15px;border-bottom:1px solid #f8fafc;cursor:pointer;" onclick="showErrorDetail(this)" data-code="' + e.code + '" data-product="' + e.product + '">' +
+        '<div style="min-width:44px;background:var(--red-bg);color:var(--red);font-weight:900;font-size:14px;letter-spacing:1px;text-align:center;padding:4px 6px;border-radius:6px;">' + e.code + '</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:13px;font-weight:600;color:var(--text);">' + e.meaning + '</div>' +
+        '</div>' +
+        '<div style="color:var(--muted);font-size:16px;">›</div>' +
+      '</div>';
+    });
+    html += '</div></div>';
+  });
+  allDiv.innerHTML = html;
+}
+
+function showErrorDetail(el) {
+  var code = el.getAttribute('data-code');
+  var product = el.getAttribute('data-product');
+  var e = ERROR_CODES.find(function(x){ return x.code === code && x.product === product; });
+  if (!e) return;
+  document.getElementById('error-search').value = code;
+  document.getElementById('error-results').innerHTML = renderErrorCard(e);
+  document.getElementById('error-all').innerHTML = '';
+  window.scrollTo(0,0);
+}
+
+function renderErrorCard(e) {
+  var productNames = {
+    boiling: 'Induction Boiling Top / Oven',
+    griddle: 'Induction Griddle',
+    fryer:   'Induction Fryer',
+    noodle:  'Induction Noodle / Pasta Cooker',
+    electric:'Electric Noodle / Pasta Cooker'
+  };
+  return '<div class="card" style="margin-bottom:10px;">' +
+    '<div style="background:var(--red);padding:14px 16px;display:flex;align-items:center;gap:12px;">' +
+      '<div style="font-size:28px;font-weight:900;color:white;letter-spacing:2px;font-family:monospace;">' + e.code + '</div>' +
+      '<div>' +
+        '<div style="font-size:14px;font-weight:700;color:white;">' + e.meaning + '</div>' +
+        '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;">' + (productNames[e.product]||e.product) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="padding:14px 16px;border-bottom:1px solid var(--mid);">' +
+      '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px;">Cause Analysis</div>' +
+      '<div style="font-size:13px;color:var(--text);line-height:1.6;">' + e.cause.split('. ').filter(Boolean).map(function(c){ return '<div style="margin-bottom:3px;">• ' + c + '</div>'; }).join('') + '</div>' +
+    '</div>' +
+    '<div style="padding:14px 16px;background:var(--green-bg);">' +
+      '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--green);margin-bottom:6px;">Solution</div>' +
+      '<div style="font-size:13px;color:#166534;line-height:1.6;">' + e.solution.split('. ').filter(Boolean).map(function(s){ return '<div style="margin-bottom:3px;">• ' + s + '</div>'; }).join('') + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+// Show all errors on load when tab is opened
+var _origGo = go;
+go = function(tab) {
+  _origGo(tab);
+  if (tab === 'errors') {
+    var product = document.getElementById('error-product') ? document.getElementById('error-product').value : '';
+    if (!document.getElementById('error-search').value) renderAllErrors(product);
+  }
+};
 
 </script>
 </body>
