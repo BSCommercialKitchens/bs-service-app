@@ -433,14 +433,7 @@ textarea.inp { resize: none; line-height: 1.5; min-height: 90px; }
     </div>
   </div>
 
-  <button class="btn btn-orange" onclick="sendReport()">📧 Send Report</button>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
-    <button class="btn btn-ghost" onclick="downloadCSV()" style="margin-top:0;">⬇ CSV</button>
-    <button class="btn btn-ghost" onclick="openPhotoReport()" style="margin-top:0;">📸 Photo Report</button>
-  </div>
-  <div style="font-size:11px; color:var(--muted); text-align:center; margin-top:8px; line-height:1.5;">
-    Tap <strong>Photo Report</strong> to open a formatted report with your photos — then share or forward it.
-  </div>
+  <button class="btn btn-orange" onclick="sendReport()">📧 Send</button>
 </div>
 
 <!-- ERROR CODES TAB -->
@@ -1057,7 +1050,7 @@ function renderPhotoGrid() {
   grid.innerHTML = PHOTO_LABELS.map(function(label, i){
     return '<label class="photo-slot" id="pslot-'+i+'">' +
       (photos[i]
-        ? '<img src="'+photos[i]+'">' + '<div class="photo-slot-overlay">✓ ' + label + '</div>'
+        ? '<img src="'+photos[i]+'">'
         : '<span style="font-size:22px;">📷</span><span style="font-size:10px;color:var(--muted);text-align:center;padding:0 6px;">Tap to take photo</span>'
       ) +
       '<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handlePhoto(event,'+i+')">' +
@@ -1186,12 +1179,68 @@ function sendReport() {
   var subject = 'B+S Service Report - ' + biz + ' - ' + date;
   var to      = recipients.join(',');
   var report  = buildReport();
-  var plainBody = (note ? note + '\n\n' : '') + report;
 
-  // Step 1: open email app with report text
-  window.location.href = 'mailto:' + encodeURIComponent(to) +
-    '?subject=' + encodeURIComponent(subject) +
-    '&body='    + encodeURIComponent(plainBody);
+  var hasPhotos = photos.some(function(p){ return p; });
+
+  if (hasPhotos) {
+    // Build HTML page with report + embedded photos, open in new tab for sharing
+    var photoLabels = ['Before service','After service','Non-warranty issue','Gas connections','Other'];
+    var reportLines = report.split('\n').map(function(l) {
+      if (l.indexOf('═') === 0 || l.indexOf('─') === 0) return '<hr style="border:none;border-top:1px solid #e2e8f0;margin:6px 0;">';
+      if (l.indexOf('B+S COMMERCIAL') === 0) return '<h2 style="color:#1a3a5c;font-family:Arial,sans-serif;font-size:15px;margin:0 0 4px;">' + l + '</h2>';
+      if (l.length > 2 && l === l.toUpperCase() && l.trim() !== '' && !l.match(/[✓✗⚠—★]/)) return '<h3 style="color:#1a3a5c;font-family:Arial,sans-serif;font-size:11px;margin:12px 0 3px;text-transform:uppercase;letter-spacing:0.5px;">' + l + '</h3>';
+      if (l.indexOf('✓') === 0) return '<div style="color:#16a34a;font-size:11px;font-family:monospace;padding:1px 0;">' + l + '</div>';
+      if (l.indexOf('✗') === 0) return '<div style="color:#dc2626;font-weight:bold;font-size:11px;font-family:monospace;padding:1px 0;">' + l + '</div>';
+      if (l.indexOf('⚠') === 0) return '<div style="color:#d97706;font-weight:bold;font-size:11px;padding:2px 0;">' + l + '</div>';
+      if (l.trim() === '') return '<div style="height:4px;"></div>';
+      return '<div style="font-size:11px;font-family:monospace;color:#1e293b;padding:1px 0;">' + l + '</div>';
+    }).join('');
+
+    var photoHTML = '<div style="margin-top:20px;border-top:2px solid #1a3a5c;padding-top:14px;"><h3 style="color:#1a3a5c;font-family:Arial,sans-serif;font-size:13px;margin:0 0 14px;">Service Photos</h3>';
+    photos.forEach(function(p, i) {
+      if (p) {
+        photoHTML += '<div style="margin-bottom:16px;"><img src="' + p + '" style="width:100%;max-width:560px;border-radius:8px;border:1px solid #e2e8f0;display:block;"></div>';
+      }
+    });
+    photoHTML += '</div>';
+
+    var noteHTML = note ? '<div style="background:#fff4ed;border:1px solid #fed7aa;border-radius:6px;padding:10px;margin-bottom:14px;font-family:Arial,sans-serif;font-size:12px;">' + note + '</div>' : '';
+
+    var page = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + subject + '</title></head>' +
+      '<body style="margin:0;padding:0;background:#f0f4f8;">' +
+      '<div style="max-width:600px;margin:0 auto;background:white;min-height:100vh;">' +
+      '<div style="background:#1a3a5c;padding:16px 20px;">' +
+      '<div style="font-size:18px;font-weight:900;color:white;font-family:Arial,sans-serif;">B+S Service Report</div>' +
+      '<div style="font-size:11px;color:rgba(255,255,255,0.6);font-family:Arial,sans-serif;margin-top:2px;">' + biz + ' · ' + date + '</div>' +
+      '</div><div style="background:#f97316;height:3px;"></div>' +
+      '<div style="padding:16px 18px 40px;">' +
+      '<div style="background:#e8f0f9;border-radius:6px;padding:10px 12px;margin-bottom:14px;font-family:Arial,sans-serif;font-size:11px;color:#1a3a5c;">' +
+      '📤 <strong>To send with photos:</strong> Tap the Share button in your browser and choose Mail or Forward.' +
+      '</div>' +
+      noteHTML + reportLines + photoHTML +
+      '</div>' +
+      '<div style="background:#f8fafc;padding:12px 18px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;font-family:Arial,sans-serif;">B+S Commercial Kitchens · +61 3 9469 4754 · clientservices@bscommercialkitchens.com</div>' +
+      '</div></body></html>';
+
+    var blob = new Blob([page], {type: 'text/html'});
+    var url  = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+
+    // Also open mailto with plain text
+    setTimeout(function() {
+      var plainBody = (note ? note + '\n\n' : '') + report + '\n\n[Photos attached separately via Photo Report page]';
+      window.location.href = 'mailto:' + encodeURIComponent(to) +
+        '?subject=' + encodeURIComponent(subject) +
+        '&body='    + encodeURIComponent(plainBody);
+    }, 500);
+
+  } else {
+    // No photos — just open mailto directly
+    var plainBody = (note ? note + '\n\n' : '') + report;
+    window.location.href = 'mailto:' + encodeURIComponent(to) +
+      '?subject=' + encodeURIComponent(subject) +
+      '&body='    + encodeURIComponent(plainBody);
+  }
 
   saveJob();
 }
